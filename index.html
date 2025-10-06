@@ -1,0 +1,1150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>兮兮轩灵的奇妙之旅</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;700&family=Noto+Serif+SC:wght@400;700&display=swap');
+        
+        * {
+            font-family: 'Noto Sans SC', sans-serif;
+        }
+        
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Noto Serif SC', serif;
+        }
+        
+        body {
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        
+        /* 防止页面滚动 */
+        .fixed.inset-0 {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+        }
+        
+        /* 自定义滚动条 */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(to bottom, #f472b6, #a855f7);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: linear-gradient(to bottom, #ec4899, #9333ea);
+        }
+
+        /* 动画样式 */
+        .fade-enter-active, .fade-leave-active {
+            transition: opacity 0.5s ease;
+        }
+
+        .fade-enter-from, .fade-leave-to {
+            opacity: 0;
+        }
+
+        .slide-fade-enter-active, .slide-fade-leave-active {
+            transition: all 0.5s ease;
+        }
+
+        .slide-fade-enter-from {
+            opacity: 0;
+            transform: translateX(30px);
+        }
+
+        .slide-fade-leave-to {
+            opacity: 0;
+            transform: translateX(-30px);
+        }
+
+        .expand-enter-active, .expand-leave-active {
+            transition: all 0.5s ease;
+            overflow: hidden;
+        }
+
+        .expand-enter-from, .expand-leave-to {
+            opacity: 0;
+            max-height: 0;
+        }
+
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .timeline-event {
+                flex-direction: column !important;
+            }
+            
+            .timeline-event > div {
+                width: 100% !important;
+            }
+            
+            .timeline-event .absolute {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+    
+    <script type="module">
+        import { createApp, ref, onMounted } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
+        
+        createApp({
+            template: `
+                <div class="min-h-screen bg-gradient-to-br from-rose-50 via-purple-50 to-blue-50">
+                    <!-- 背景音乐控制 -->
+                    <audio id="introAudio" ref="introAudio" @ended="onIntroAudioEnd">
+                        <source :src="audioResources.intro" type="audio/mp3">
+                    </audio>
+                    <audio id="backgroundAudio" ref="backgroundAudio" loop>
+                        <source :src="audioResources.background" type="audio/mp3">
+                    </audio>
+                    
+                    <!-- 音量控制 -->
+                    <div v-if="showVolumeControl" class="fixed bottom-4 right-4 z-50 bg-white rounded-full p-2 shadow-md">
+                        <button @click="toggleMute" class="text-gray-600 hover:text-gray-800">
+                            <i :class="muted ? 'fas fa-volume-mute' : 'fas fa-volume-up'"></i>
+                        </button>
+                    </div>
+                    
+                    <!-- 封面页面 -->
+                    <transition name="fade" appear>
+                        <div v-if="currentStage === 'entrance'" class="fixed inset-0 flex items-center justify-center">
+                            <!-- 礼物盒封面 -->
+                            <div class="relative z-10 text-center">
+                                <!-- 礼物盒图片 -->
+                                <div class="mb-8 relative">
+                                    <img 
+                                        :src="imageResources.cover" 
+                                        alt="生日礼物盒"
+                                        class="w-80 h-80 mx-auto object-contain drop-shadow-2xl transform hover:scale-105 transition-transform duration-500"
+                                        :class="{ 'animate-pulse': isBoxAnimating }"
+                                    >
+                                </div>
+                                
+                                <!-- 生日祝福语 -->
+                                <h1 class="text-4xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-rose-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">
+                                    {{ birthdayMessage }}
+                                </h1>
+                                <p class="text-xl md:text-2xl text-gray-600 mb-12 font-light">
+                                    {{ birthdaySubtitle }}
+                                </p>
+                                
+                                <!-- 解锁按钮 -->
+                                <button 
+                                    @click="unlockMemoryBook"
+                                    class="group relative inline-flex items-center justify-center px-8 py-4 bg-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
+                                >
+                                    <img 
+                                        :src="imageResources.key" 
+                                        alt="解锁钥匙"
+                                        class="w-8 h-8 mr-3 group-hover:rotate-12 transition-transform duration-300"
+                                    >
+                                    <span class="text-lg font-medium text-gray-700">{{ unlockButtonText }}</span>
+                                    
+                                    <!-- 闪烁效果 -->
+                                    <div class="absolute inset-0 rounded-full bg-gradient-to-r from-rose-200 via-purple-200 to-blue-200 opacity-0 group-hover:opacity-30 transition-opacity duration-300 animate-pulse"></div>
+                                </button>
+                            </div>
+                        </div>
+                    </transition>
+
+                    <!-- 主内容页面 -->
+                    <transition name="fade" appear>
+                        <div v-if="currentStage === 'main'" class="min-h-screen">
+                            <!-- 导航栏 -->
+                            <nav class="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md shadow-sm">
+                                <div class="max-w-6xl mx-auto px-4 py-4">
+                                    <div class="flex items-center justify-between">
+                                        <h2 class="text-2xl font-bold bg-gradient-to-r from-rose-400 to-purple-400 bg-clip-text text-transparent">
+                                            {{ navTitle }}
+                                        </h2>
+                                        <div class="flex space-x-6">
+                                            <button 
+                                                v-for="tab in tabs" 
+                                                :key="tab.id"
+                                                @click="activeTab = tab.id"
+                                                class="px-4 py-2 rounded-full text-sm font-medium transition-all duration-300"
+                                                :class="activeTab === tab.id ? 'bg-rose-100 text-rose-600' : 'text-gray-600 hover:text-rose-600'"
+                                            >
+                                                {{ tab.name }}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </nav>
+
+                            <!-- 主内容区域 -->
+                            <main class="pt-24 pb-12">
+                                <div class="max-w-6xl mx-auto px-4">
+                                    <!-- 时间胶囊模块 -->
+                                    <transition name="slide-fade" appear>
+                                        <div v-if="activeTab === 'timeline'" class="space-y-8">
+                                            <div class="text-center mb-12">
+                                                <h3 class="text-3xl font-bold text-gray-800 mb-4">{{ timelineTitle }}</h3>
+                                                <p class="text-lg text-gray-600">{{ timelineSubtitle }}</p>
+                                            </div>
+                                            
+                                            <!-- 时间轴 -->
+                                            <div class="relative">
+                                                <!-- 时间轴线 -->
+                                                <div class="absolute left-1/2 transform -translate-x-1/2 w-1 h-full bg-gradient-to-b from-rose-200 via-purple-200 to-blue-200 rounded-full"></div>
+                                                
+                                                <!-- 时间节点 -->
+                                                <div v-for="(event, index) in timelineData" :key="index" class="relative mb-12">
+                                                    <div class="flex items-center" :class="index % 2 === 0 ? 'flex-row' : 'flex-row-reverse'">
+                                                        <!-- 内容卡片 -->
+                                                        <div class="w-5/12">
+                                                            <div 
+                                                                class="bg-white rounded-2xl shadow-lg p-6 cursor-pointer transform hover:scale-105 transition-all duration-300"
+                                                                @click="toggleTimelineEvent(index)"
+                                                            >
+                                                                <div class="flex items-center justify-between mb-4">
+                                                                    <span class="text-2xl font-bold text-rose-500">{{ event.year }}</span>
+                                                                    <i class="fas fa-chevron-down transition-transform duration-300" :class="{ 'rotate-180': event.expanded }"></i>
+                                                                </div>
+                                                                <h4 class="text-xl font-semibold text-gray-800 mb-2">{{ event.title }}</h4>
+                                                                
+                                                                <!-- 展开内容 -->
+                                                                <transition name="expand">
+                                                                    <div v-if="event.expanded" class="mt-4">
+                                                                        <p class="text-gray-600 mb-4">{{ event.description }}</p>
+                                                                        
+                                                                        <!-- 图片画廊 -->
+                                                                        <div class="relative mb-4">
+                                                                            <div class="grid grid-cols-2 gap-4">
+                                                                                <img 
+                                                                                    v-for="(img, imgIndex) in event.images" 
+                                                                                    :key="imgIndex"
+                                                                                    :src="img" 
+                                                                                    :alt="event.title"
+                                                                                    class="w-full h-32 object-cover rounded-lg shadow-md cursor-pointer"
+                                                                                    @click="openImageGallery('timeline', index, imgIndex)"
+                                                                                >
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </transition>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <!-- 中心点 -->
+                                                        <div class="w-2/12 flex justify-center">
+                                                            <div class="w-6 h-6 bg-rose-400 rounded-full border-4 border-white shadow-lg z-10"></div>
+                                                        </div>
+                                                        
+                                                        <!-- 空白区域 -->
+                                                        <div class="w-5/12"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </transition>
+
+                                    <!-- 照片精选模块 -->
+                                    <transition name="slide-fade" appear>
+                                        <div v-if="activeTab === 'photoGallery'" class="space-y-12">
+                                            <div class="text-center mb-12">
+                                                <h3 class="text-3xl font-bold text-gray-800 mb-4">{{ galleryTitle }}</h3>
+                                                <p class="text-lg text-gray-600">{{ gallerySubtitle }}</p>
+                                            </div>
+                                            
+                                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                                                <div v-for="(album, albumIndex) in photoAlbums" :key="albumIndex" class="bg-white rounded-2xl shadow-lg overflow-hidden">
+                                                    <!-- 相册封面 -->
+                                                    <div class="relative">
+                                                        <img 
+                                                            :src="album.cover" 
+                                                            :alt="album.title"
+                                                            class="w-full h-48 object-cover cursor-pointer" 
+                                                            @click="toggleAlbum(albumIndex)"
+                                                        >
+                                                    </div>
+                                                    
+                                                    <div class="p-6">
+                                                        <h4 class="text-xl font-semibold text-gray-800 mb-4">{{ album.title }}</h4>
+                                                        <p class="text-gray-600 mb-6">{{ album.description }}</p>
+                                                    </div>
+                                                    
+                                                    <!-- 相册内容 -->
+                                                    <transition name="slide-fade">
+                                                        <div v-if="album.expanded" class="grid grid-cols-3 gap-2 p-4">
+                                                            <img 
+                                                                v-for="(img, imgIndex) in album.images.slice(0, 6)" 
+                                                                :key="imgIndex"
+                                                                :src="img" 
+                                                                :alt="album.title"
+                                                                class="w-full h-24 md:h-32 object-cover rounded-lg cursor-pointer"
+                                                                @click="openImageGallery('gallery', albumIndex, imgIndex)"
+                                                                :class="getPhotoShape()"
+                                                            >
+                                                        </div>
+                                                    </transition>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </transition>
+
+                                    <!-- 默契测试模块 -->
+                                    <transition name="slide-fade" appear>
+                                        <div v-if="activeTab === 'quiz'" class="max-w-2xl mx-auto">
+                                            <div class="text-center mb-12">
+                                                <h3 class="text-3xl font-bold text-gray-800 mb-4">{{ quizTitle }}</h3>
+                                                <p class="text-lg text-gray-600">{{ quizSubtitle }}</p>
+                                            </div>
+                                            
+                                            <!-- 进度条 -->
+                                            <div class="mb-8">
+                                                <div class="flex justify-between text-sm text-gray-600 mb-2">
+                                                    <span>进度</span>
+                                                    <span>{{ currentQuestion + 1 }} / {{ quizData.length }}</span>
+                                                </div>
+                                                <div class="w-full bg-gray-200 rounded-full h-2">
+                                                    <div 
+                                                        class="bg-gradient-to-r from-rose-400 to-purple-400 h-2 rounded-full transition-all duration-500"
+                                                        :style="\`width: \${((currentQuestion + 1) / quizData.length) * 100}%\`"
+                                                    ></div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- 题目卡片 -->
+                                            <div class="bg-white rounded-2xl shadow-lg p-8 mb-6">
+                                                <h4 class="text-xl font-semibold text-gray-800 mb-6">
+                                                    {{ quizData[currentQuestion].question }}
+                                                </h4>
+                                                
+                                                <!-- 选项 -->
+                                                <div class="space-y-3">
+                                                    <button
+                                                        v-for="(option, index) in quizData[currentQuestion].options"
+                                                        :key="index"
+                                                        @click="selectAnswer(index)"
+                                                        class="w-full p-4 text-left rounded-xl border-2 transition-all duration-300"
+                                                        :class="getOptionClass(index)"
+                                                        :disabled="quizData[currentQuestion].userAnswer !== null"
+                                                    >
+                                                        <div class="flex items-center justify-between">
+                                                            <span>{{ option }}</span>
+                                                            <i v-if="showAnswerIcon(index)" :class="getAnswerIcon(index)"></i>
+                                                        </div>
+                                                    </button>
+                                                </div>
+                                                
+                                                <!-- 答案解释 -->
+                                                <transition name="fade" appear>
+                                                    <div v-if="quizData[currentQuestion].userAnswer !== null" class="mt-6 p-4 bg-blue-50 rounded-xl">
+                                                        <p class="text-blue-800">
+                                                            <i class="fas fa-lightbulb mr-2"></i>
+                                                            {{ quizData[currentQuestion].explanation }}
+                                                        </p>
+                                                    </div>
+                                                </transition>
+                                            </div>
+                                            
+                                            <!-- 下一题按钮 -->
+                                            <div class="text-center">
+                                                <button
+                                                    v-if="quizData[currentQuestion].userAnswer !== null && currentQuestion < quizData.length - 1"
+                                                    @click="nextQuestion"
+                                                    class="px-8 py-3 bg-gradient-to-r from-rose-400 to-purple-400 text-white rounded-full font-medium hover:shadow-lg transform hover:scale-105 transition-all duration-300"
+                                                >
+                                                    下一题
+                                                </button>
+                                                
+                                                <!-- 完成测试 -->
+                                                <button
+                                                    v-if="quizData[currentQuestion].userAnswer !== null && currentQuestion === quizData.length - 1"
+                                                    @click="showQuizResult"
+                                                    class="px-8 py-3 bg-gradient-to-r from-rose-400 to-purple-400 text-white rounded-full font-medium hover:shadow-lg transform hover:scale-105 transition-all duration-300"
+                                                >
+                                                    查看结果
+                                                </button>
+                                            </div>
+                                            
+                                            <!-- 得分显示 -->
+                                            <div class="text-center mt-6">
+                                                <span class="text-2xl font-bold text-rose-500">{{ quizScore }} / {{ quizData.length }}</span>
+                                            </div>
+                                        </div>
+                                    </transition>
+
+                                    <!-- 情话电台模块 -->
+                                    <transition name="slide-fade" appear>
+                                        <div v-if="activeTab === 'radio'" class="max-w-4xl mx-auto">
+                                            <div class="text-center mb-12">
+                                                <h3 class="text-3xl font-bold text-gray-800 mb-4">{{ radioTitle }}</h3>
+                                                <p class="text-lg text-gray-600">{{ radioSubtitle }}</p>
+                                            </div>
+                                            
+                                            <!-- 收音机界面 -->
+                                            <div class="bg-white rounded-2xl shadow-lg p-8 mb-8">
+                                                <div class="flex items-center justify-center mb-8">
+                                                    <img 
+                                                        :src="imageResources.radio" 
+                                                        alt="情话电台"
+                                                        class="w-80 h-60 object-contain"
+                                                    >
+                                                </div>
+                                                
+                                                <!-- 频道选择 -->
+                                                <div class="flex justify-center space-x-6">
+                                                    <button
+                                                        @click="switchChannel('letter')"
+                                                        class="px-6 py-3 rounded-full font-medium transition-all duration-300"
+                                                        :class="currentChannel === 'letter' ? 'bg-rose-100 text-rose-600 shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                                    >
+                                                        <i class="fas fa-envelope mr-2"></i>
+                                                        频道 A - 情书
+                                                    </button>
+                                                    
+                                                    <button
+                                                        @click="switchChannel('video')"
+                                                        class="px-6 py-3 rounded-full font-medium transition-all duration-300"
+                                                        :class="currentChannel === 'video' ? 'bg-purple-100 text-purple-600 shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'"
+                                                    >
+                                                        <i class="fas fa-video mr-2"></i>
+                                                        频道 B - 视频
+                                                    </button>
+                                                </div>
+                                                
+                                                <!-- 频道内容 -->
+                                                <transition name="fade" appear>
+                                                    <div v-if="currentChannel === 'letter'" class="mt-8 text-center">
+                                                        <p class="text-gray-600 mb-4">点击打开我的手写情书</p>
+                                                        <button
+                                                            @click="openLoveLetter"
+                                                            class="px-6 py-3 bg-rose-100 text-rose-600 rounded-full hover:bg-rose-200 transition-colors duration-300"
+                                                        >
+                                                            <i class="fas fa-heart mr-2"></i>
+                                                            打开情书
+                                                        </button>
+                                                    </div>
+                                                </transition>
+                                                
+                                                <transition name="fade" appear>
+                                                    <div v-if="currentChannel === 'video'" class="mt-8 text-center">
+                                                        <p class="text-gray-600 mb-4">扫描二维码查看秘密视频</p>
+                                                        <img 
+                                                            :src="imageResources.qrcode" 
+                                                            alt="视频二维码"
+                                                            class="w-40 h-40 mx-auto rounded-lg shadow-md"
+                                                        >
+                                                        <p class="text-sm text-gray-500 mt-2">请使用手机扫码查看</p>
+                                                    </div>
+                                                </transition>
+                                            </div>
+                                        </div>
+                                    </transition>
+                                </div>
+                            </main>
+                        </div>
+                    </transition>
+
+                    <!-- 模态框 - 情书 -->
+                    <transition name="fade" appear>
+                        <div v-if="showLoveLetterModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                            <div class="bg-white rounded-2xl max-w-2xl w-full max-h-full overflow-auto">
+                                <div class="p-6">
+                                    <div class="flex justify-between items-center mb-4">
+                                        <h3 class="text-2xl font-bold text-gray-800">我的手写情书</h3>
+                                        <button
+                                            @click="closeLoveLetter"
+                                            class="text-gray-500 hover:text-gray-700 text-2xl"
+                                        >
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                    <img 
+                                        :src="imageResources.letter" 
+                                        alt="手写情书"
+                                        class="w-full h-auto rounded-lg shadow-md"
+                                    >
+                                </div>
+                            </div>
+                        </div>
+                    </transition>
+
+                    <!-- 模态框 - 测试结果 -->
+                    <transition name="fade" appear>
+                        <div v-if="showQuizResultModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                            <div class="bg-white rounded-2xl max-w-md w-full p-8 text-center">
+                                <div class="mb-6">
+                                    <div class="w-24 h-24 mx-auto mb-4 bg-gradient-to-r from-rose-400 to-purple-400 rounded-full flex items-center justify-center">
+                                        <i class="fas fa-trophy text-4xl text-white"></i>
+                                    </div>
+                                    <h3 class="text-2xl font-bold text-gray-800 mb-2">测试完成！</h3>
+                                    <p class="text-gray-600">我们的默契度</p>
+                                </div>
+                                
+                                <!-- 得分圆环 -->
+                                <div class="relative w-32 h-32 mx-auto mb-6">
+                                    <svg class="w-32 h-32 transform -rotate-90">
+                                        <circle cx="64" cy="64" r="56" stroke="#e5e7eb" stroke-width="8" fill="none"></circle>
+                                        <circle
+                                            cx="64" cy="64" r="56"
+                                            stroke="url(#gradient)"
+                                            stroke-width="8"
+                                            fill="none"
+                                            stroke-dasharray="351.86"
+                                            :stroke-dashoffset="351.86 - (quizScore / quizData.length) * 351.86"
+                                            stroke-linecap="round"
+                                            class="transition-all duration-1000"
+                                        ></circle>
+                                        <defs>
+                                            <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                                <stop offset="0%" style="stop-color:#f472b6"/>
+                                                <stop offset="100%" style="stop-color:#a855f7"/>
+                                            </linearGradient>
+                                        </defs>
+                                    </svg>
+                                    <div class="absolute inset-0 flex items-center justify-center">
+                                        <span class="text-3xl font-bold text-gray-800">{{ Math.round((quizScore / quizData.length) * 100) }}%</span>
+                                    </div>
+                                </div>
+                                
+                                <p class="text-lg text-gray-600 mb-6">{{ getQuizResultMessage() }}</p>
+                                
+                                <button
+                                    @click="closeQuizResult"
+                                    class="px-8 py-3 bg-gradient-to-r from-rose-400 to-purple-400 text-white rounded-full font-medium hover:shadow-lg transform hover:scale-105 transition-all duration-300"
+                                >
+                                    太棒了！
+                                </button>
+                            </div>
+                        </div>
+                    </transition>
+
+                    <!-- 模态框 - 图片画廊 -->
+                    <transition name="fade" appear>
+                        <div v-if="showImageGallery" class="fixed inset-0 bg-black bg-opacity-90 flex items-center justify-center z-50 p-4">
+                            <div class="max-w-4xl w-full max-h-full">
+                                <div class="relative">
+                                    <!-- 关闭按钮 -->
+                                    <button
+                                        @click="closeImageGallery"
+                                        class="absolute top-4 right-4 text-white text-2xl hover:text-gray-300"
+                                    >
+                                        <i class="fas fa-times"></i>
+                                    </button>
+                                    
+                                    <!-- 左右箭头 -->
+                                    <button
+                                        @click="previousImage"
+                                        class="absolute top-1/2 left-4 transform -translate-y-1/2 text-white text-2xl hover:text-gray-300"
+                                    >
+                                        <i class="fas fa-chevron-left"></i>
+                                    </button>
+                                    <button
+                                        @click="nextImage"
+                                        class="absolute top-1/2 right-4 transform -translate-y-1/2 text-white text-2xl hover:text-gray-300"
+                                    >
+                                        <i class="fas fa-chevron-right"></i>
+                                    </button>
+                                    
+                                    <!-- 图片展示 -->
+                                    <img 
+                                        :src="currentImage" 
+                                        alt="查看图片" 
+                                        class="w-full h-auto max-h-[90vh] object-contain"
+                                        @click="closeImageGallery"
+                                    >
+                                    
+                                    <!-- 图片信息 -->
+                                    <div v-if="currentImageSource === 'timeline'" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white text-center">
+                                        <p class="font-medium">{{ timelineData[currentImageEventIndex].year }} - {{ timelineData[currentImageEventIndex].title }}</p>
+                                    </div>
+                                    <div v-else-if="currentImageSource === 'gallery'" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white text-center">
+                                        <p class="font-medium">{{ photoAlbums[currentImageEventIndex].title }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </transition>
+                </div>
+            `,
+            setup() {
+                // ==================== 数据配置区域 ====================
+                // 音频资源路径配置
+                const audioResources = {
+                    intro: 'resources/audio/intro.wav',  // 开场音乐，只播放一次
+                    background: 'resources/audio/background.mp3'  // 背景音乐，循环播放
+                }
+                
+                // 图片资源路径配置
+                const imageResources = {
+                    cover: 'resources/images/gift_box_cover.png',
+                    key: 'resources/images/unlock_key.png',
+                    radio: 'resources/images/radio_player.png',
+                    letter: 'resources/images/love_letter.png',
+                    qrcode: 'resources/images/video_qrcode.png'
+                }
+
+                // 封面页面文字配置
+                const birthdayMessage = '生日快乐，我最最最爱的兮兮宝贝！'
+                const birthdaySubtitle = '今天让我们一起回顾那些美好的时光'
+                const unlockButtonText = '点击开启探索'
+
+                // 导航栏配置
+                const navTitle = '我们的恋爱纪念册'
+                const tabs = [
+                    { id: 'timeline', name: '时间胶囊' },
+                    { id: 'photoGallery', name: '照片精选' },
+                    { id: 'quiz', name: '心有灵兮' },
+                    { id: 'radio', name: '情话电台' }
+                ]
+
+                // 模块配置
+                const timelineTitle = '我们的时光胶囊'
+                const timelineSubtitle = '点击每个时间节点，重温那些美好的回忆'
+                const galleryTitle = '照片精选'
+                const gallerySubtitle = '精心挑选的照片，记录我们最美的瞬间'
+                const quizTitle = '心有灵兮一点通'
+                const quizSubtitle = '测测只有我们互相知道的秘密'
+                const radioTitle = '专属情话电台'
+                const radioSubtitle = '调频到我们爱的频道'
+
+                // ==================== 响应式数据 ====================
+                const currentStage = ref('entrance')
+                const activeTab = ref('timeline')
+                const isBoxAnimating = ref(false)
+                const showVolumeControl = ref(true)
+                const muted = ref(false)
+
+                // 时间胶囊数据
+                const timelineData = ref([
+                    {
+                        year: '2023.5.31',
+                        title: '我们的相遇',
+                        description: '那天我蜷缩在小角落复习组成原理，你过来，带着压倒一切的生命力，从此我的时间就像皱巴种子泡水了一样绽开。',
+                        expanded: false
+                    },
+                    {
+                        year: '2023.6 - 2023.12',
+                        title: '幸福的序章',
+                        description: '从陌生到相知，我们只用了六个月。唱K错过的火车，醉晚亭看不到的演出，怀旧店当的冤大头，图书馆的中期复习，像我们的青春一样稚嫩。当我们在古德寺散步，在音乐会上合照，在保利广场看打火花时，我们的爱情已逐渐成型。',
+                        images: ['resources/images/timeline_2_1.jpg', 'resources/images/timeline_2_2.jpg', 'resources/images/timeline_2_3.jpg', 'resources/images/timeline_2_4.jpg', 'resources/images/timeline_2_5.jpg', 'resources/images/timeline_2_6.jpg', 'resources/images/timeline_2_7.jpg', 'resources/images/timeline_2_8.jpg' ],
+                        expanded: false
+                    },
+                    {
+                        year: '2024,1.13',
+                        title: '告白时刻',
+                        description: '东湖之眼上的13分14秒，蝴蝶项链和手写信。',
+                        images: ['resources/images/timeline_3_1.jpg', 'resources/images/timeline_3_2.jpg', 'resources/images/timeline_3_3.jpg', 'resources/images/timeline_3_4.jpg'],
+                        expanded: false
+                    },
+                    {
+                        year: '2024.3 - 2024.5',
+                        title: '苦中作乐的日子',
+                        description: '这段时间我们是图书馆的常客。兮兮一边上课一边实习，实习完紧接着又开始准备期末考试，那段时间宝宝憔悴了不少，回忆起来还挺心疼。轩灵忙着准备夏令营，做着各种项目。不过我们还是去了很多地方，武汉的到处都留下了我们的痕迹。',
+                        images: ['resources/images/timeline_4_1.jpg', 'resources/images/timeline_4_2.jpg', 'resources/images/timeline_4_3.jpg', 'resources/images/timeline_4_4.jpg', 'resources/images/timeline_4_5.jpg', 'resources/images/timeline_4_6.jpg', 'resources/images/timeline_4_7.jpg'],
+                        expanded: false
+                    },
+                    {
+                        year: '2024.5',
+                        title: '第一次出门远行',
+                        description: '我们去了咸宁。正如这座城市的名字一般，所有的一切都是那么宁静且幸福。温泉，烈日，森林，商业街，我们两个呆在一起就是整个世界。',
+                        images: ['resources/images/timeline_5_1.jpg', 'resources/images/timeline_5_2.jpg', 'resources/images/timeline_5_3.jpg', 'resources/images/timeline_5_4.jpg', ],
+                        expanded: false
+                    },
+                    {
+                        year: '2024.7.18',
+                        title: '第一次送宝贝鲜花',
+                        description: '兮兮宝千里迢迢赶到苏州来陪伴轩灵进行夏令营，兮兮就是这样一个天使般的兮兮。',
+                        images: ['resources/images/timeline_6_1.jpg', 'resources/images/timeline_6_2.jpg', 'resources/images/timeline_6_3.jpg', 'resources/images/timeline_6_4.jpg', ],
+                        expanded: false
+                    },
+                    {
+                        year: '2024.7 - 2025.6',
+                        title: '四季予你',
+                        description: '我们度过了幸福的春夏秋冬。秋天我们去了宁夏，黄石，川西；冬天我们去了浏阳，长白山，哈尔滨；春天我们去了重庆，武功山，张家界；夏天我们去了滨城，亚庇。我们一起去了很多很多地方，吃了很多很多好吃的，经历过很多很多的事情，我们会永远永远在一起。',
+                        images: ['resources/images/timeline_7_1.jpg', 'resources/images/timeline_7_2.jpg', 'resources/images/timeline_7_3.jpg', 'resources/images/timeline_7_4.jpg', 'resources/images/timeline_7_5.jpg', 'resources/images/timeline_7_6.jpg', 'resources/images/timeline_7_7.jpg', 'resources/images/timeline_7_8.jpg', 'resources/images/timeline_7_9.jpg', 'resources/images/timeline_7_10.jpg', 'resources/images/timeline_7_11.jpg', 'resources/images/timeline_7_12.jpg', 'resources/images/timeline_7_13.jpg', 'resources/images/timeline_7_14.jpg', 'resources/images/timeline_7_15.jpg', 'resources/images/timeline_7_16.jpg'],
+                        expanded: false
+                    },
+                    {
+                        year: '25.6.20',
+                        title: '我们毕业啦',
+                        description: '毕业了我们应该说什么？祝我们前程似锦？祝我们一帆风顺？我像一个困在时间里的孩子，祈求着一个漫无止境的夏天。真的不想毕业呀，青春是一部如此仓促的书，但每一页都写得很认真。',
+                        images: ['resources/images/timeline_8_1.jpg', 'resources/images/timeline_8_2.jpg', 'resources/images/timeline_8_3.jpg', 'resources/images/timeline_8_4.jpg',],
+                        expanded: false
+                    },
+                    {
+                        year: '25.7.2',
+                        title: '奔赴广州',
+                        description: 'Our blessedness home!',
+                        images: ['resources/images/timeline_9_1.jpg', 'resources/images/timeline_9_2.jpg', 'resources/images/timeline_9_3.jpg', 'resources/images/timeline_9_4.jpg',],
+                        expanded: false
+                    },
+                    {
+                        year: '25往后一百年',
+                        title: '我们的故事还在继续书写',
+                        description: '死生契阔，与子成说。执子之手，与子偕老。',
+                        expanded: false
+                    }, 
+                ])
+
+                // 照片精选数据
+                const photoAlbums = ref([
+                    {
+                        title: '川西徒步',
+                        description: '辛劳的旅途，金色的回忆。',
+                        cover: 'resources/images/hiking/cover.jpg',
+                        images: [
+                            'resources/images/hiking/1.jpg',
+                            'resources/images/hiking/2.jpg',
+                            'resources/images/hiking/3.jpg',
+                            'resources/images/hiking/4.jpg',
+                            'resources/images/hiking/5.jpg',
+                            'resources/images/hiking/6.jpg',
+                            'resources/images/hiking/7.jpg',
+                            'resources/images/hiking/8.jpg',
+                            'resources/images/hiking/9.jpg',
+                            'resources/images/hiking/10.jpg',
+                            'resources/images/hiking/11.jpg',
+                            'resources/images/hiking/12.jpg'
+                        ],
+                        expanded: false
+                    },
+                    {
+                        title: '百变小兮',
+                        description: '你的每一面我都喜欢。',
+                        cover: 'resources/images/xixi/cover.jpg',
+                        images: [
+                            'resources/images/xixi/1.jpg',
+                            'resources/images/xixi/2.jpg',
+                            'resources/images/xixi/3.jpg',
+                            'resources/images/xixi/4.jpg',
+                            'resources/images/xixi/5.jpg',
+                            'resources/images/xixi/6.jpg',
+                            'resources/images/xixi/7.jpg',
+                            'resources/images/xixi/8.jpg',
+                            'resources/images/xixi/9.jpg',
+                            'resources/images/xixi/10.jpg',
+                            'resources/images/xixi/11.jpg',
+                            'resources/images/xixi/12.jpg',
+                            'resources/images/xixi/13.jpg',
+                            'resources/images/xixi/14.jpg',
+                            'resources/images/xixi/15.jpg',
+                            'resources/images/xixi/16.jpg',
+                            'resources/images/xixi/17.jpg',
+                            'resources/images/xixi/18.jpg',
+                            'resources/images/xixi/19.jpg',
+                            'resources/images/xixi/20.jpg',
+                            'resources/images/xixi/21.jpg',
+                            'resources/images/xixi/22.jpg',
+                            'resources/images/xixi/23.jpg',
+                            'resources/images/xixi/24.jpg',
+                            'resources/images/xixi/25.jpg',
+                            'resources/images/xixi/26.jpg',
+                            'resources/images/xixi/27.jpg',
+                            'resources/images/xixi/28.jpg',
+                            'resources/images/xixi/29.jpg',
+                            'resources/images/xixi/30.jpg',
+                            'resources/images/xixi/31.jpg',
+                            'resources/images/xixi/32.jpg',
+                            'resources/images/xixi/33.jpg',
+                            'resources/images/xixi/34.jpg',
+                            'resources/images/xixi/35.jpg',
+                            'resources/images/xixi/36.jpg',
+                            'resources/images/xixi/37.jpg',
+                            'resources/images/xixi/38.jpg',
+                            'resources/images/xixi/39.jpg',
+                            'resources/images/xixi/40.jpg',
+                            'resources/images/xixi/41.jpg',
+                            'resources/images/xixi/42.jpg',
+                            'resources/images/xixi/43.jpg',
+                            'resources/images/xixi/44.jpg',
+                            'resources/images/xixi/45.jpg',
+                            'resources/images/xixi/46.jpg',
+                            'resources/images/xixi/47.jpg',
+                            'resources/images/xixi/48.jpg',
+                        ],
+                        expanded: false
+                    },
+                    {
+                        title: '帅气轩灵🐶',
+                        description: '兮兮宝贝的男朋友能不帅吗',
+                        cover: 'resources/images/xl/cover.jpg',
+                        images: [
+                            'resources/images/xl/1.jpg',
+                            'resources/images/xl/2.jpg',
+                            'resources/images/xl/3.jpg',
+                            'resources/images/xl/4.jpg',
+                            'resources/images/xl/5.jpg',
+                            'resources/images/xl/6.jpg',
+                            'resources/images/xl/7.jpg',
+                            'resources/images/xl/8.jpg',
+                            'resources/images/xl/9.jpg',
+                            'resources/images/xl/10.jpg',
+                        ],
+                        expanded: false
+                    }
+                ])
+
+                // 默契测试数据
+                const quizData = ref([
+                    {
+                        question: '我们第一次约会的地点是？',
+                        options: ['咖啡厅☕️', '电影院🎬', '森林公园🌲', '食堂🍚'],
+                        correct: 3,
+                        explanation: '我们第一次约会，原本是约在森林公园散步，结果因为下雨就去了韵苑食堂二楼。你穿着一身黑色的裙子，举止神情尽显可爱，我们聊了很久很久。',
+                        userAnswer: null
+                    },
+                    {
+                        question: '我们在一起的纪念日是哪一天？',
+                        options: ['5月31日', '6月26日', '1月13日', '7月25日'],
+                        correct: 2,
+                        explanation: '5月31日是我们相遇的日子；6月26日是轩灵的生日；1月13日才是对的，那天轩灵在摩天轮上跟兮兮表白的，但是兮兮酱好像不太满意🤫；7月25日是悲伤的一天。',
+                        userAnswer: null
+                    },
+                    {
+                        question: '下列哪个词汇不属于兮语？',
+                        options: ['gi了😣', '小摊摊😋', '关谷', '比比酱❤️', '🐱nia~', '咬掉'],
+                        correct: 1,
+                        explanation: '虽然宝比很喜欢小摊摊，但这不是兮语。“关谷”是兮兮每次说“光谷”的发音，“nia~”是那种凶猛可爱的猫猫叫。',
+                        userAnswer: null
+                    },
+                    {
+                        question: '我们抓到的第一个娃娃是什么？',
+                        options: ['零食', '钥匙扣', '草莓熊🍓', '轩灵的心'],
+                        correct: 2,
+                        explanation: '是草莓熊哦宝宝，轩灵的心可不是靠抓娃机抓的。轩灵第一次抓上娃娃就是跟兮兮宝贝一起。兮兮不仅是抓娃高手，还是轩灵的幸运女神。',
+                        userAnswer: null
+                    },
+                    {
+                        question: '还记得去年的今天我们在干嘛吗？',
+                        options: ['欢乐谷', '知音号', '漫葡小镇', '图书馆'],
+                        correct: 0,
+                        explanation: '我们在欢乐谷哦！白天吃烤肉还大吵了一架，晚上差点因为下雨导致欢乐谷玩不了，但我们还是进场了。最终几乎两个人承包了整个欢乐谷。😄',
+                        userAnswer: null
+                    }
+                ])
+
+                const currentQuestion = ref(0)
+                const quizScore = ref(0)
+
+                // 情话电台数据
+                const currentChannel = ref('letter')
+
+                // 模态框状态
+                const showLoveLetterModal = ref(false)
+                const showQuizResultModal = ref(false)
+
+                // 图片查看器状态
+                const showImageGallery = ref(false)
+                const currentImageSource = ref('')
+                const currentImageEventIndex = ref(0)
+                const currentImageIndex = ref(0)
+                const currentImage = ref('')
+
+                // 音频元素
+                const introAudio = ref(null)
+                const backgroundAudio = ref(null)
+
+                // ==================== 方法函数 ====================
+
+                // 解锁记忆手册
+                const unlockMemoryBook = () => {
+                    isBoxAnimating.value = true
+                    
+                    // 使用 anime.js 创建礼物盒飞出的动画
+                    anime({
+                        targets: '.relative.z-10',
+                        translateY: -window.innerHeight,
+                        opacity: 0,
+                        duration: 1500,
+                        easing: 'easeInOutQuart',
+                        complete: () => {
+                            currentStage.value = 'main'
+                            // 播放背景音乐
+                            if (backgroundAudio.value) {
+                                backgroundAudio.value.play().catch(e => console.log('自动播放失败，请用户交互后重试:', e))
+                            }
+                        }
+                    })
+                }
+
+                // 时间轴事件切换
+                const toggleTimelineEvent = (index) => {
+                    timelineData.value[index].expanded = !timelineData.value[index].expanded
+                }
+
+                // 相册切换
+                const toggleAlbum = (index) => {
+                    photoAlbums.value[index].expanded = !photoAlbums.value[index].expanded
+                }
+
+                // 选择测试答案
+                const selectAnswer = (answerIndex) => {
+                    if (quizData.value[currentQuestion.value].userAnswer !== null) return
+                    
+                    quizData.value[currentQuestion.value].userAnswer = answerIndex
+                    
+                    if (answerIndex === quizData.value[currentQuestion.value].correct) {
+                        quizScore.value++
+                    }
+                }
+
+                // 获取选项样式
+                const getOptionClass = (index) => {
+                    const question = quizData.value[currentQuestion.value]
+                    if (question.userAnswer === null) {
+                        return 'border-gray-200 hover:border-rose-300 hover:bg-rose-50'
+                    }
+                    
+                    if (index === question.correct) {
+                        return 'border-green-500 bg-green-50 text-green-700'
+                    }
+                    
+                    if (index === question.userAnswer && index !== question.correct) {
+                        return 'border-red-500 bg-red-50 text-red-700'
+                    }
+                    
+                    return 'border-gray-200 text-gray-500'
+                }
+
+                // 显示答案图标
+                const showAnswerIcon = (index) => {
+                    const question = quizData.value[currentQuestion.value]
+                    return question.userAnswer !== null && (index === question.correct || index === question.userAnswer)
+                }
+
+                // 获取答案图标
+                const getAnswerIcon = (index) => {
+                    const question = quizData.value[currentQuestion.value]
+                    if (index === question.correct) {
+                        return 'fas fa-check text-green-500'
+                    }
+                    if (index === question.userAnswer && index !== question.correct) {
+                        return 'fas fa-times text-red-500'
+                    }
+                    return ''
+                }
+
+                // 下一题
+                const nextQuestion = () => {
+                    if (currentQuestion.value < quizData.value.length - 1) {
+                        currentQuestion.value++
+                    }
+                }
+
+                // 显示测试结果
+                const showQuizResult = () => {
+                    showQuizResultModal.value = true
+                }
+
+                // 关闭测试结果
+                const closeQuizResult = () => {
+                    showQuizResultModal.value = false
+                }
+
+                // 获取测试结果消息
+                const getQuizResultMessage = () => {
+                    const percentage = (quizScore.value / quizData.value.length) * 100
+                    if (percentage >= 60) {
+                        return '在天愿为比翼鸟，在地愿作连理枝！宝宝我们是天生一对！❤️'
+                    } else {
+                        return '你小子！竟然答错这么多！😠'
+                    }
+                }
+
+                // 切换电台频道
+                const switchChannel = (channel) => {
+                    currentChannel.value = channel
+                }
+
+                // 打开情书
+                const openLoveLetter = () => {
+                    showLoveLetterModal.value = true
+                }
+
+                // 关闭情书
+                const closeLoveLetter = () => {
+                    showLoveLetterModal.value = false
+                }
+
+                // 打开图片画廊
+                const openImageGallery = (source, eventIndex, imageIndex) => {
+                    currentImageSource.value = source
+                    currentImageEventIndex.value = eventIndex
+                    currentImageIndex.value = imageIndex
+                    
+                    if (source === 'timeline') {
+                        currentImage.value = timelineData.value[eventIndex].images[imageIndex]
+                    } else if (source === 'gallery') {
+                        currentImage.value = photoAlbums.value[eventIndex].images[imageIndex]
+                    }
+                    
+                    showImageGallery.value = true
+                }
+
+                // 关闭图片画廊
+                const closeImageGallery = () => {
+                    showImageGallery.value = false
+                }
+
+                // 上一张图片
+                const previousImage = () => {
+                    if (currentImageIndex.value > 0) {
+                        currentImageIndex.value--
+                        
+                        if (currentImageSource.value === 'timeline') {
+                            currentImage.value = timelineData.value[currentImageEventIndex.value].images[currentImageIndex.value]
+                        } else if (currentImageSource.value === 'gallery') {
+                            currentImage.value = photoAlbums.value[currentImageEventIndex.value].images[currentImageIndex.value]
+                        }
+                    }
+                }
+
+                // 下一张图片
+                const nextImage = () => {
+                    if (currentImageSource.value === 'timeline') {
+                        const eventImages = timelineData.value[currentImageEventIndex.value].images
+                        if (currentImageIndex.value < eventImages.length - 1) {
+                            currentImageIndex.value++
+                            currentImage.value = eventImages[currentImageIndex.value]
+                        }
+                    } else if (currentImageSource.value === 'gallery') {
+                        const albumImages = photoAlbums.value[currentImageEventIndex.value].images
+                        if (currentImageIndex.value < albumImages.length - 1) {
+                            currentImageIndex.value++
+                            currentImage.value = albumImages[currentImageIndex.value]
+                        }
+                    }
+                }
+
+                // 获取照片形状
+                const getPhotoShape = () => {
+                    const shapes = [
+                        'rounded-lg',
+                        'rounded-t-lg',
+                        'rounded-b-lg',
+                        'rounded-l-lg',
+                        'rounded-r-lg',
+                        'rounded-full'
+                    ]
+                    return shapes[Math.floor(Math.random() * shapes.length)]
+                }
+
+                // 开场音频结束事件
+                const onIntroAudioEnd = () => {
+                    // 开场音频结束后停止播放
+                    if (introAudio.value) {
+                        introAudio.value.pause()
+                        introAudio.value.currentTime = 0
+                    }
+                }
+
+                // 切换静音状态
+                const toggleMute = () => {
+                    muted.value = !muted.value
+                    if (introAudio.value) {
+                        introAudio.value.muted = muted.value
+                    }
+                    if (backgroundAudio.value) {
+                        backgroundAudio.value.muted = muted.value
+                    }
+                }
+
+                // ==================== 生命周期钩子 ====================
+
+                onMounted(() => {
+                    // 页面加载后播放开场音乐
+                    if (introAudio.value) {
+                        introAudio.value.play().catch(e => console.log('自动播放失败，请用户交互后重试:', e))
+                    }
+                    
+                    // 页面加载动画
+                    anime({
+                        targets: '.relative.z-10 > *',
+                        opacity: [0, 1],
+                        translateY: [50, 0],
+                        delay: anime.stagger(200),
+                        duration: 1000,
+                        easing: 'easeOutQuart'
+                    })
+                })
+
+                return {
+                    // 数据
+                    audioResources,
+                    imageResources,
+                    birthdayMessage,
+                    birthdaySubtitle,
+                    unlockButtonText,
+                    navTitle,
+                    tabs,
+                    timelineTitle,
+                    timelineSubtitle,
+                    galleryTitle,
+                    gallerySubtitle,
+                    quizTitle,
+                    quizSubtitle,
+                    radioTitle,
+                    radioSubtitle,
+                    currentStage,
+                    activeTab,
+                    isBoxAnimating,
+                    showVolumeControl,
+                    muted,
+                    timelineData,
+                    photoAlbums,
+                    quizData,
+                    currentQuestion,
+                    quizScore,
+                    currentChannel,
+                    showLoveLetterModal,
+                    showQuizResultModal,
+                    showImageGallery,
+                    currentImageSource,
+                    currentImageEventIndex,
+                    currentImageIndex,
+                    currentImage,
+                    // 音频元素
+                    introAudio,
+                    backgroundAudio,
+                    // 方法
+                    unlockMemoryBook,
+                    toggleTimelineEvent,
+                    toggleAlbum,
+                    selectAnswer,
+                    getOptionClass,
+                    showAnswerIcon,
+                    getAnswerIcon,
+                    nextQuestion,
+                    showQuizResult,
+                    closeQuizResult,
+                    getQuizResultMessage,
+                    switchChannel,
+                    openLoveLetter,
+                    closeLoveLetter,
+                    openImageGallery,
+                    closeImageGallery,
+                    previousImage,
+                    nextImage,
+                    getPhotoShape,
+                    onIntroAudioEnd,
+                    toggleMute
+                }
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
