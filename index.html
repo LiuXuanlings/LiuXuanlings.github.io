@@ -123,6 +123,7 @@
     <div id="app"></div>
 
     <script type="module">
+        import { createApp, ref, computed, onMounted } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
 
         createApp({
             template: `
@@ -1054,6 +1055,8 @@
                         return data.rate
                     } catch {
                         return null
+                    }  // 补充这一行，闭合 catch 块
+                }      // 补充这一行，闭合 checkGitHubRateLimit 函数
                 // GitHub Token验证相关状态
                 const githubToken = ref('')
                 const showToken = ref(false)
@@ -2053,6 +2056,19 @@
 
                 // ==================== 方法函数 ====================
 
+                // 解锁进入主页
+                const unlockMemoryBook = () => {
+                    currentStage.value = 'main';
+                    // 播放背景音乐
+                    if (backgroundAudio.value) {
+                        backgroundAudio.value.play().catch(e => console.log('自动播放失败:', e));
+                    }
+                    // 加载日记
+                    if (hasValidToken()) {
+                        loadMoodDiary();
+                    }
+                }
+                
                 // 跳转到心情日历
                 const goToMoodCalendar = () => {
                     currentStage.value = 'main'
@@ -2415,10 +2431,6 @@
                     toggleMute
                 }
             }
-        }).mount('#app');
-    </script>
-</body>
-</html>
         }).mount('#app');
     </script>
 </body>
