@@ -24,6 +24,16 @@
             overflow-x: hidden;
         }
         
+        .password-shake {
+            animation: shake 0.5s ease-in-out;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+            20%, 40%, 60%, 80% { transform: translateX(10px); }
+        }
+
         /* 防止页面滚动 */
         .fixed.inset-0 {
             position: fixed;
@@ -103,13 +113,135 @@
 </head>
 <body>
     <div id="app"></div>
-    
+
     <script type="module">
         import { createApp, ref, onMounted } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
-        
+
+        // 简单的密码加密和验证函数
+        function encodePassword(password) {
+            // 简单的混淆：Base64编码 + 简单的字符替换
+            const base64 = btoa(password);
+            return base64.split('').map(char =>
+                String.fromCharCode(char.charCodeAt(0) + 1)
+            ).join('');
+        }
+
+        function decodePassword(encoded) {
+            try {
+                const decoded = encoded.split('').map(char =>
+                    String.fromCharCode(char.charCodeAt(0) - 1)
+                ).join('');
+                return atob(decoded);
+            } catch {
+                return '';
+            }
+        }
+
+        function setAuthCookie() {
+            // 设置7天过期时间的cookie
+            const expires = new Date();
+            expires.setDate(expires.getDate() + 7);
+            document.cookie = `authenticated=true; expires=${expires.toUTCString()}; path=/`;
+        }
+
+        function getAuthCookie() {
+            const cookies = document.cookie.split(';');
+            for (let cookie of cookies) {
+                const [name, value] = cookie.trim().split('=');
+                if (name === 'authenticated' && value === 'true') {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         createApp({
             template: `
                 <div class="min-h-screen bg-gradient-to-br from-rose-50 via-purple-50 to-blue-50">
+                    <!-- 密码验证页面 -->
+                    <transition name="fade" appear>
+                        <div v-if="currentStage === 'password'" class="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-rose-50 via-purple-50 to-blue-50">
+                            <div class="relative z-10 text-center max-w-md w-full mx-4">
+                                <!-- 密码输入框 -->
+                                <div class="bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl p-8 md:p-10">
+                                    <!-- 锁图标 -->
+                                    <div class="mb-8">
+                                        <div class="w-24 h-24 mx-auto bg-gradient-to-r from-rose-400 to-purple-400 rounded-full flex items-center justify-center">
+                                            <i class="fas fa-lock text-4xl text-white"></i>
+                                        </div>
+                                    </div>
+
+                                    <!-- 标题 -->
+                                    <h1 class="text-3xl md:text-4xl font-bold mb-4 bg-gradient-to-r from-rose-400 via-purple-400 to-blue-400 bg-clip-text text-transparent">
+                                        私人纪念册
+                                    </h1>
+                                    <p class="text-gray-600 mb-8 text-lg">
+                                        请输入访问密码
+                                    </p>
+
+                                    <!-- 密码输入框 -->
+                                    <div class="mb-6 relative">
+                                        <div class="relative">
+                                            <input
+                                                v-model="passwordInput"
+                                                @keyup.enter="checkPassword"
+                                                :type="showPassword ? 'text' : 'password'"
+                                                placeholder="请输入密码"
+                                                class="w-full px-6 py-4 text-lg rounded-full border-2 focus:outline-none focus:ring-4 transition-all duration-300"
+                                                :class="[passwordError ? 'border-red-400 focus:ring-red-200' : 'border-gray-200 focus:border-rose-400 focus:ring-rose-200', passwordShake ? 'password-shake' : '']"
+                                                ref="passwordInputRef"
+                                            >
+                                            <button
+                                                @click="togglePasswordVisibility"
+                                                type="button"
+                                                class="absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                            >
+                                                <i :class="showPassword ? 'fas fa-eye-slash' : 'fas fa-eye'"></i>
+                                            </button>
+                                        </div>
+
+                                        <!-- 错误提示 -->
+                                        <transition name="fade" appear>
+                                            <div v-if="passwordError" class="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl">
+                                                <p class="text-red-600 text-sm flex items-center">
+                                                    <i class="fas fa-exclamation-circle mr-2"></i>
+                                                    {{ errorMessage }}
+                                                </p>
+                                            </div>
+                                        </transition>
+
+                                        <!-- 提示 -->
+                                        <div class="mt-4 text-sm text-gray-500">
+                                            <p><i class="fas fa-info-circle mr-1"></i> 提示：密码是4位数字</p>
+                                        </div>
+                                    </div>
+
+                                    <!-- 提交按钮 -->
+                                    <button
+                                        @click="checkPassword"
+                                        :disabled="!passwordInput"
+                                        class="w-full px-8 py-4 bg-gradient-to-r from-rose-400 to-purple-400 text-white rounded-full font-medium hover:shadow-lg transform hover:scale-[1.02] transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                                    >
+                                        <span class="flex items-center justify-center">
+                                            <i class="fas fa-key mr-2"></i>
+                                            验证密码
+                                        </span>
+                                    </button>
+
+                                    <!-- Cookie提示 -->
+                                    <div class="mt-6 text-xs text-gray-500">
+                                        <p><i class="fas fa-cookie mr-1"></i> 验证成功后7天内无需再次输入密码</p>
+                                    </div>
+                                </div>
+
+                                <!-- 装饰元素 -->
+                                <div class="absolute -top-8 -left-8 w-20 h-20 bg-rose-200 rounded-full opacity-20 animate-pulse"></div>
+                                <div class="absolute -bottom-6 -right-6 w-24 h-24 bg-purple-200 rounded-full opacity-20 animate-pulse"></div>
+                                <div class="absolute top-16 -right-4 w-16 h-16 bg-blue-200 rounded-full opacity-20 animate-pulse"></div>
+                            </div>
+                        </div>
+                    </transition>
+
                     <!-- 背景音乐控制 -->
                     <audio id="introAudio" ref="introAudio" @ended="onIntroAudioEnd">
                         <source :src="audioResources.intro" type="audio/mp3">
@@ -117,14 +249,14 @@
                     <audio id="backgroundAudio" ref="backgroundAudio" loop>
                         <source :src="audioResources.background" type="audio/mp3">
                     </audio>
-                    
+
                     <!-- 音量控制 -->
-                    <div v-if="showVolumeControl" class="fixed bottom-4 right-4 z-50 bg-white rounded-full p-2 shadow-md">
+                    <div v-if="showVolumeControl && currentStage !== 'password'" class="fixed bottom-4 right-4 z-50 bg-white rounded-full p-2 shadow-md">
                         <button @click="toggleMute" class="text-gray-600 hover:text-gray-800">
                             <i :class="muted ? 'fas fa-volume-mute' : 'fas fa-volume-up'"></i>
                         </button>
                     </div>
-                    
+
                     <!-- 封面页面 -->
                     <transition name="fade" appear>
                         <div v-if="currentStage === 'entrance'" class="fixed inset-0 flex items-center justify-center">
@@ -581,6 +713,14 @@
                 </div>
             `,
             setup() {
+                // 密码验证相关状态
+                const passwordInput = ref('')
+                const showPassword = ref(false)
+                const passwordError = ref(false)
+                const passwordShake = ref(false)
+                const errorMessage = ref('')
+                const passwordInputRef = ref(null)
+
                 // ==================== 数据配置区域 ====================
                 // 音频资源路径配置
                 const audioResources = {
@@ -622,7 +762,7 @@
                 const radioSubtitle = '调频到我们爱的频道'
 
                 // ==================== 响应式数据 ====================
-                const currentStage = ref('entrance')
+                const currentStage = ref('password')
                 const activeTab = ref('timeline')
                 const isBoxAnimating = ref(false)
                 const showVolumeControl = ref(true)
@@ -858,12 +998,77 @@
                 const introAudio = ref(null)
                 const backgroundAudio = ref(null)
 
+                // ==================== 密码验证方法 ====================
+
+                // 切换密码显示/隐藏
+                const togglePasswordVisibility = () => {
+                    showPassword.value = !showPassword.value
+                    // 输入框类型已通过v-bind动态绑定，不需要手动修改DOM
+                }
+
+                // 验证密码
+                const checkPassword = () => {
+                    if (!passwordInput.value.trim()) {
+                        passwordError.value = true
+                        errorMessage.value = '请输入密码'
+                        return
+                    }
+
+                    // 密码验证逻辑
+                    const input = passwordInput.value.trim()
+
+                    // 密码：7730
+                    if (input === '7730') {
+                        passwordError.value = false
+                        errorMessage.value = ''
+
+                        // 设置cookie，7天内有效
+                        setAuthCookie()
+
+                        // 动画过渡到封面页面
+                        anime({
+                            targets: '.relative.z-10',
+                            translateY: -window.innerHeight,
+                            opacity: 0,
+                            duration: 800,
+                            easing: 'easeInOutQuart',
+                            complete: () => {
+                                currentStage.value = 'entrance'
+                                // 密码验证成功后自动开始播放音乐
+                                if (introAudio.value) {
+                                    introAudio.value.play().catch(e => console.log('自动播放失败，请用户交互后重试:', e))
+                                }
+                                // 页面加载动画
+                                anime({
+                                    targets: '.relative.z-10 > *',
+                                    opacity: [0, 1],
+                                    translateY: [50, 0],
+                                    delay: anime.stagger(200),
+                                    duration: 1000,
+                                    easing: 'easeOutQuart'
+                                })
+                            }
+                        })
+                    } else {
+                        passwordError.value = true
+                        errorMessage.value = '密码错误，请重试'
+                        // 清空输入框
+                        passwordInput.value = ''
+
+                        // 添加摇动效果
+                        passwordShake.value = true
+                        setTimeout(() => {
+                            passwordShake.value = false
+                        }, 500)
+                    }
+                }
+
                 // ==================== 方法函数 ====================
 
                 // 解锁记忆手册
                 const unlockMemoryBook = () => {
                     isBoxAnimating.value = true
-                    
+
                     // 使用 anime.js 创建礼物盒飞出的动画
                     anime({
                         targets: '.relative.z-10',
@@ -1066,23 +1271,35 @@
                 // ==================== 生命周期钩子 ====================
 
                 onMounted(() => {
-                    // 页面加载后播放开场音乐
-                    if (introAudio.value) {
-                        introAudio.value.play().catch(e => console.log('自动播放失败，请用户交互后重试:', e))
+                    // 检查是否已有有效的cookie
+                    if (getAuthCookie()) {
+                        // 如果有cookie，直接进入封面页面
+                        currentStage.value = 'entrance'
+                        // 页面加载动画
+                        anime({
+                            targets: '.relative.z-10 > *',
+                            opacity: [0, 1],
+                            translateY: [50, 0],
+                            delay: anime.stagger(200),
+                            duration: 1000,
+                            easing: 'easeOutQuart'
+                        })
+                        // 播放开场音乐
+                        if (introAudio.value) {
+                            introAudio.value.play().catch(e => console.log('自动播放失败，请用户交互后重试:', e))
+                        }
                     }
-                    
-                    // 页面加载动画
-                    anime({
-                        targets: '.relative.z-10 > *',
-                        opacity: [0, 1],
-                        translateY: [50, 0],
-                        delay: anime.stagger(200),
-                        duration: 1000,
-                        easing: 'easeOutQuart'
-                    })
+                    // 如果cookie无效，保持在密码页面
                 })
 
                 return {
+                    // 密码相关数据
+                    passwordInput,
+                    showPassword,
+                    passwordError,
+                    passwordShake,
+                    errorMessage,
+                    passwordInputRef,
                     // 数据
                     audioResources,
                     imageResources,
@@ -1120,6 +1337,9 @@
                     // 音频元素
                     introAudio,
                     backgroundAudio,
+                    // 密码验证方法
+                    togglePasswordVisibility,
+                    checkPassword,
                     // 方法
                     unlockMemoryBook,
                     toggleTimelineEvent,
