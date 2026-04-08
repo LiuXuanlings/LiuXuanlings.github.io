@@ -126,132 +126,6 @@
     <div id="app"></div>
 
     <script type="module">
-        import { createApp, ref, onMounted, computed } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.prod.js';
-
-        // GitHub API配置（全局变量）
-        const githubConfig = {
-            owner: 'LiuXuanlings',
-            repo: 'LiuXuanlings.github.io',
-            diaryPath: 'mood-diary.json',
-            branch: 'main'
-        }
-
-        // GitHub API相关函数
-        async function loadDiaryFromGitHub(token) {
-            try {
-                const { owner, repo, diaryPath } = githubConfig
-
-                const response = await fetch(
-                    `https://api.github.com/repos/${owner}/${repo}/contents/${diaryPath}`,
-                    {
-                        headers: {
-                            'Authorization': `token ${token}`,
-                            'Accept': 'application/vnd.github.v3+json'
-                        }
-                    }
-                )
-
-                if (response.status === 404) {
-                    // 文件不存在，返回空数据
-                    console.log('日记文件不存在，将创建新文件')
-                    return {
-                        version: '1.0',
-                        lastUpdated: new Date().toISOString(),
-                        records: {}
-                    }
-                }
-
-                if (!response.ok) {
-                    throw new Error(`GitHub API错误: ${response.status}`)
-                }
-
-                const data = await response.json()
-                const content = atob(data.content) // GitHub API返回的是base64编码的内容
-                return JSON.parse(content)
-            } catch (error) {
-                console.error('加载日记数据失败:', error)
-                // 返回空数据结构
-                return {
-                    version: '1.0',
-                    lastUpdated: new Date().toISOString(),
-                    records: {}
-                }
-            }
-        }
-
-        async function saveDiaryToGitHub(token, diaryData) {
-            try {
-                const { owner, repo, diaryPath } = githubConfig
-
-                // 先获取当前文件信息（用于获取SHA）
-                let sha = null
-                try {
-                    const fileResponse = await fetch(
-                        `https://api.github.com/repos/${owner}/${repo}/contents/${diaryPath}`,
-                        {
-                            headers: {
-                                'Authorization': `token ${token}`,
-                                'Accept': 'application/vnd.github.v3+json'
-                            }
-                        }
-                    )
-
-                    if (fileResponse.ok) {
-                        const fileData = await fileResponse.json()
-                        sha = fileData.sha
-                    }
-                } catch (error) {
-                    // 文件不存在，继续创建新文件
-                    console.log('日记文件不存在，将创建新文件')
-                }
-
-                // 准备更新的数据
-                const updateData = {
-                    message: '更新心情日记',
-                    content: btoa(JSON.stringify(diaryData, null, 2)),
-                    sha: sha // 如果sha为null，GitHub会创建新文件
-                }
-
-                const response = await fetch(
-                    `https://api.github.com/repos/${owner}/${repo}/contents/${diaryPath}`,
-                    {
-                        method: 'PUT',
-                        headers: {
-                            'Authorization': `token ${token}`,
-                            'Accept': 'application/vnd.github.v3+json',
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(updateData)
-                    }
-                )
-
-                if (!response.ok) {
-                    const errorData = await response.json()
-                    throw new Error(`保存失败: ${errorData.message || response.status}`)
-                }
-
-                return true
-            } catch (error) {
-                console.error('保存日记数据失败:', error)
-                throw error
-            }
-        }
-
-        // 检查GitHub API速率限制
-        async function checkGitHubRateLimit(token) {
-            try {
-                const response = await fetch('https://api.github.com/rate_limit', {
-                    headers: {
-                        'Authorization': `token ${token}`,
-                        'Accept': 'application/vnd.github.v3+json'
-                    }
-                })
-                const data = await response.json()
-                return data.rate
-            } catch {
-                return null
-            }
-        }
 
         createApp({
             template: `
@@ -1069,6 +943,230 @@
                 </div>
             `,
             setup() {
+                // GitHub API配置
+                const githubConfig = {
+                    owner: 'LiuXuanlings',
+                    repo: 'LiuXuanlings.github.io',
+                    diaryPath: 'mood-diary.json',
+                    branch: 'main'
+                }
+
+                // GitHub API函数
+                const loadDiaryFromGitHub = async (token) => {
+                    try {
+                        const { owner, repo, diaryPath } = githubConfig
+                        const response = await fetch(
+                            `https://api.github.com/repos/${owner}/${repo}/contents/${diaryPath}`,
+                            {
+                                headers: {
+                                    'Authorization': `token ${token}`,
+                                    'Accept': 'application/vnd.github.v3+json'
+                                }
+                            }
+                        )
+
+                        if (response.status === 404) {
+                            console.log('日记文件不存在，将创建新文件')
+                            return {
+                                version: '1.0',
+                                lastUpdated: new Date().toISOString(),
+                                records: {}
+                            }
+                        }
+
+                        if (!response.ok) {
+                            throw new Error(`GitHub API错误: ${response.status}`)
+                        }
+
+                        const data = await response.json()
+                        const content = atob(data.content)
+                        return JSON.parse(content)
+                    } catch (error) {
+                        console.error('加载日记数据失败:', error)
+                        return {
+                            version: '1.0',
+                            lastUpdated: new Date().toISOString(),
+                            records: {}
+                        }
+                    }
+                }
+
+                const saveDiaryToGitHub = async (token, diaryData) => {
+                    try {
+                        const { owner, repo, diaryPath } = githubConfig
+                        let sha = null
+                        try {
+                            const fileResponse = await fetch(
+                                `https://api.github.com/repos/${owner}/${repo}/contents/${diaryPath}`,
+                                {
+                                    headers: {
+                                        'Authorization': `token ${token}`,
+                                        'Accept': 'application/vnd.github.v3+json'
+                                    }
+                                }
+                            )
+
+                            if (fileResponse.ok) {
+                                const fileData = await fileResponse.json()
+                                sha = fileData.sha
+                            }
+                        } catch (error) {
+                            console.log('日记文件不存在，将创建新文件')
+                        }
+
+                        const updateData = {
+                            message: '更新心情日记',
+                            content: btoa(JSON.stringify(diaryData, null, 2)),
+                            sha: sha
+                        }
+
+                        const response = await fetch(
+                            `https://api.github.com/repos/${owner}/${repo}/contents/${diaryPath}`,
+                            {
+                                method: 'PUT',
+                                headers: {
+                                    'Authorization': `token ${token}`,
+                                    'Accept': 'application/vnd.github.v3+json',
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(updateData)
+                            }
+                        )
+
+                        if (!response.ok) {
+                            const errorData = await response.json()
+                            throw new Error(`保存失败: ${errorData.message || response.status}`)
+                        }
+
+                        return true
+                    } catch (error) {
+                        console.error('保存日记数据失败:', error)
+                        throw error
+                    }
+                }
+
+                const checkGitHubRateLimit = async (token) => {
+                    try {
+                        const response = await fetch('https://api.github.com/rate_limit', {
+                            headers: {
+                                'Authorization': `token ${token}`,
+                                'Accept': 'application/vnd.github.v3+json'
+                            }
+                        })
+                        const data = await response.json()
+                        return data.rate
+                    } catch {
+                        return null
+                    }
+                }
+                // GitHub API函数
+                const loadDiaryFromGitHub = async (token) => {
+                    try {
+                        const { owner, repo, diaryPath } = githubConfig
+                        const response = await fetch(
+                            `https://api.github.com/repos/${owner}/${repo}/contents/${diaryPath}`,
+                            {
+                                headers: {
+                                    'Authorization': `token ${token}`,
+                                    'Accept': 'application/vnd.github.v3+json'
+                                }
+                            }
+                        )
+
+                        if (response.status === 404) {
+                            console.log('日记文件不存在，将创建新文件')
+                            return {
+                                version: '1.0',
+                                lastUpdated: new Date().toISOString(),
+                                records: {}
+                            }
+                        }
+
+                        if (!response.ok) {
+                            throw new Error(`GitHub API错误: ${response.status}`)
+                        }
+
+                        const data = await response.json()
+                        const content = atob(data.content)
+                        return JSON.parse(content)
+                    } catch (error) {
+                        console.error('加载日记数据失败:', error)
+                        return {
+                            version: '1.0',
+                            lastUpdated: new Date().toISOString(),
+                            records: {}
+                        }
+                    }
+                }
+
+                const saveDiaryToGitHub = async (token, diaryData) => {
+                    try {
+                        const { owner, repo, diaryPath } = githubConfig
+                        let sha = null
+                        try {
+                            const fileResponse = await fetch(
+                                `https://api.github.com/repos/${owner}/${repo}/contents/${diaryPath}`,
+                                {
+                                    headers: {
+                                        'Authorization': `token ${token}`,
+                                        'Accept': 'application/vnd.github.v3+json'
+                                    }
+                                }
+                            )
+
+                            if (fileResponse.ok) {
+                                const fileData = await fileResponse.json()
+                                sha = fileData.sha
+                            }
+                        } catch (error) {
+                            console.log('日记文件不存在，将创建新文件')
+                        }
+
+                        const updateData = {
+                            message: '更新心情日记',
+                            content: btoa(JSON.stringify(diaryData, null, 2)),
+                            sha: sha
+                        }
+
+                        const response = await fetch(
+                            `https://api.github.com/repos/${owner}/${repo}/contents/${diaryPath}`,
+                            {
+                                method: 'PUT',
+                                headers: {
+                                    'Authorization': `token ${token}`,
+                                    'Accept': 'application/vnd.github.v3+json',
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify(updateData)
+                            }
+                        )
+
+                        if (!response.ok) {
+                            const errorData = await response.json()
+                            throw new Error(`保存失败: ${errorData.message || response.status}`)
+                        }
+
+                        return true
+                    } catch (error) {
+                        console.error('保存日记数据失败:', error)
+                        throw error
+                    }
+                }
+
+                const checkGitHubRateLimit = async (token) => {
+                    try {
+                        const response = await fetch('https://api.github.com/rate_limit', {
+                            headers: {
+                                'Authorization': `token ${token}`,
+                                'Accept': 'application/vnd.github.v3+json'
+                            }
+                        })
+                        const data = await response.json()
+                        return data.rate
+                    } catch {
+                        return null
+                    }
+                }
                 // GitHub Token验证相关状态
                 const githubToken = ref('')
                 const showToken = ref(false)
@@ -1082,6 +1180,10 @@
                     intro: 'resources/audio/intro.wav',  // 开场音乐，只播放一次
                     background: 'resources/audio/background.mp3'  // 背景音乐，循环播放
                 }
+
+                // 音频元素引用
+                const introAudio = ref(null)
+                const backgroundAudio = ref(null)
                 
                 // 图片资源路径配置
                 const imageResources = {
@@ -2426,6 +2528,10 @@
                     toggleMute
                 }
             }
+        }).mount('#app');
+    </script>
+</body>
+</html>
         }).mount('#app');
     </script>
 </body>
