@@ -977,7 +977,14 @@
                         }
 
                         const data = await response.json()
-                        const content = atob(data.content)
+                        // 安全地将 Base64 解码为包含中文和表情的字符串
+                        const binaryStr = atob(data.content.replace(/\n/g, ''));
+                        const bytes = new Uint8Array(binaryStr.length);
+                        for (let i = 0; i < binaryStr.length; i++) {
+                            bytes[i] = binaryStr.charCodeAt(i);
+                        }
+                        const content = new TextDecoder().decode(bytes);
+                        
                         return JSON.parse(content)
                     } catch (error) {
                         console.error('加载日记数据失败:', error)
@@ -1012,9 +1019,17 @@
                             console.log('日记文件不存在，将创建新文件')
                         }
 
+                        // 安全的将包含中文和表情的 JSON 转换为 Base64
+                        const jsonStr = JSON.stringify(diaryData, null, 2);
+                        const bytes = new TextEncoder().encode(jsonStr);
+                        let binaryStr = '';
+                        for (let i = 0; i < bytes.byteLength; i++) {
+                            binaryStr += String.fromCharCode(bytes[i]);
+                        }
+
                         const updateData = {
                             message: '更新心情日记',
-                            content: btoa(JSON.stringify(diaryData, null, 2)),
+                            content: btoa(binaryStr),
                             sha: sha
                         }
 
@@ -2068,7 +2083,7 @@
                         loadMoodDiary();
                     }
                 }
-                
+
                 // 跳转到心情日历
                 const goToMoodCalendar = () => {
                     currentStage.value = 'main'
