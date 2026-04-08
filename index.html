@@ -4,8 +4,18 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>兮兮轩灵的奇妙之旅</title>
-    <!-- 使用生产环境版本的Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com?plugins=forms,typography,aspect-ratio,line-clamp"></script>
+    <!-- 使用稳定的Tailwind CSS Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {}
+            },
+            corePlugins: {
+                preflight: false,
+            }
+        }
+    </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -116,7 +126,7 @@
     <div id="app"></div>
 
     <script type="module">
-        import { createApp, ref, onMounted, computed } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js';
+        import { createApp, ref, onMounted, computed } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.prod.js';
 
         // GitHub API配置（全局变量）
         const githubConfig = {
@@ -1334,6 +1344,13 @@
                 // 模态框状态
                 const showLoveLetterModal = ref(false)
                 const showQuizResultModal = ref(false)
+                const showImageGallery = ref(false)
+
+                // 图片画廊状态
+                const currentImageSource = ref('')
+                const currentImageEventIndex = ref(0)
+                const currentImageIndex = ref(0)
+                const currentImage = ref('')
 
                 // 心情编辑器状态
                 const showMoodEditor = ref(false)
